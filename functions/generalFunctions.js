@@ -7,7 +7,7 @@ function convertIDtoString(message,ids)
         var user = `<@!${ids[index]}>`
         users.push(user)
     }
-    return users;
+    return users.join(', ');
 }
 
 function getUserFromMention(mention) {

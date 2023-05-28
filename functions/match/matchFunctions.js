@@ -1,5 +1,5 @@
-
 const { getQueue, deleteQueue } = require("../queue/queueHandler");
+const { MessageEmbed } = require("discord.js");
 const { matchEmbed, serverEmbed, mapEmbed, matchEmbedIncomplete } = require("./matchEmbed");
 const config = require("../../config/config.json");
 const { setMatch, getMaps, setMapBan, getAvailableServers, setServerBan, getMatchIncomplete, setMatchCancelled, getMatchByID, modifyMatch } = require("./matchHandler");
@@ -16,79 +16,61 @@ let conn = require('../server/rcon/rconFunctions');
 
 function hasEnoughPlayers(message) {
     if (getQueue().length < config.matchsize) {
-        message.channel.send("No enough of players needed, canceling the vote")
+        message.channel.send("Not enough players needed, canceling the vote");
         return false;
     }
     return true;
 }
 
 function voteServer(message) {
-    if (!hasEnoughPlayers(message)) return;
-
+    if (!hasEnoughPlayers(message)) return;    
     var servers = getAvailableServers();
-    message.channel.send({ embed: serverEmbed(message, emojisServer, servers) }).then(embedMessage => {
+    message.channel.send({ embeds: [serverEmbed(message, emojisServer, servers)] }).then(embedMessage => {
 
         for (let index = 0; index < servers.length; index++) {
             embedMessage.react(emojisServer[index]);
         }
-
-        var votes = [0,0,0]
+    
+        var votes = [0, 0, 0];
         let usersStored = [];
-
+    
         const filter = (reaction, user) => {
             return emojisServer.includes(reaction.emoji.name) && user.id !== embedMessage.author.id && getQueue().includes(user.id) && !usersStored.includes(user.id);
         };
-
-        const collector = embedMessage.createReactionCollector(filter, { max: config.matchsize, time: errorTime, errors: ['time'] });
-
+    
+        const collector = embedMessage.createReactionCollector({ filter, max: config.matchsize, time: errorTime, errors: ['time'] });
+    
         collector.on('collect', (reaction, user) => {
-                switch (reaction.emoji.name) {
-                    case `${emojisServer[0]}`:
-                        votes[0]++;
-                        break;
-                    case `${emojisServer[1]}`:
-                        votes[1]++;
-                        break;
-                    case `${emojisServer[2]}`:
-                        votes[2]++;
-                        break;
-                }
-                usersStored.push(user.id)
+            switch (reaction.emoji.name) {
+                case `${emojisServer[0]}`:
+                    votes[0]++;
+                    break;
+                case `${emojisServer[1]}`:
+                    votes[1]++;
+                    break;
+                case `${emojisServer[2]}`:
+                    votes[2]++;
+                    break;
+            }
+            usersStored.push(user.id);
         });
-
+    
         collector.on('end', collected => {
-            
             let i = votes.indexOf(Math.max(...votes));
-
+    
             server = servers[i];
-            console.log("server: "+ server);
-            /*
-            server = "";
-            if (vote1 > minvote) {
-                server = servers[i]
-            }
-            if (vote2 > minvote) {
-                server = servers[1]
-            }
-            if (vote3 > minvote) {
-                server = servers[2];
-            }
-
-            if (server === "") server = servers[Math.floor(Math.random() * servers.length)];
-            */
-
+            console.log("server: " + server);
+    
             embedMessage.delete();
-            voteMap(message, server)
-
+            voteMap(message, server);
         });
-
-    })
+    });
 }
 
 function voteMap(message, server) {
     if (!hasEnoughPlayers(message)) return;
-    var maps = getMaps(server)
-    message.channel.send({ embed: mapEmbed(message, emojisMap, maps, server) }).then(embedMessage => {
+    var maps = getMaps(server);
+    message.channel.send({ embeds: [mapEmbed(message, emojisMap, maps, server)] }).then(embedMessage => {
 
         embedMessage.react(emojisMap[0]);
         embedMessage.react(emojisMap[1]);
@@ -97,76 +79,55 @@ function voteMap(message, server) {
         embedMessage.react(emojisMap[4]);
         let usersStored = [];
 
-        var votes = [0,0,0,0,0];
-        //var vote1 = 0, vote2 = 0, vote3 = 0, vote4 = 0, vote5 = 0;
+        var votes = [0, 0, 0, 0, 0];
 
         const filter = (reaction, user) => {
             return emojisMap.includes(reaction.emoji.name) && user.id !== embedMessage.author.id && getQueue().includes(user.id) && !usersStored.includes(user.id);
         };
 
-        const collector = embedMessage.createReactionCollector(filter, { max: config.matchsize, time: errorTime, errors: ['time'] });
+        const collector = embedMessage.createReactionCollector({ filter, max: config.matchsize, time: errorTime, errors: ['time'] });
 
         collector.on('collect', (reaction, user) => {
-                switch (reaction.emoji.name) {
-                    case `${emojisMap[0]}`:
-                        votes[0]++;
-                        break;
-                    case `${emojisMap[1]}`:
-                        votes[1]++;
-                        break;
-                    case `${emojisMap[2]}`:
-                        votes[2]++;
-                        break;
-                    case `${emojisMap[3]}`:
-                        votes[3]++;
-                        break;
-                    case `${emojisMap[4]}`:
-                        votes[4]++;
-                        break;
-                }
-                usersStored.push(user.id);
+            switch (reaction.emoji.name) {
+                case `${emojisMap[0]}`:
+                    votes[0]++;
+                    break;
+                case `${emojisMap[1]}`:
+                    votes[1]++;
+                    break;
+                case `${emojisMap[2]}`:
+                    votes[2]++;
+                    break;
+                case `${emojisMap[3]}`:
+                    votes[3]++;
+                    break;
+                case `${emojisMap[4]}`:
+                    votes[4]++;
+                    break;
+            }
+            usersStored.push(user.id);
         });
 
         collector.on('end', collected => {
-            var map = ""
+            var map = "";
 
             let i = votes.indexOf(Math.max(...votes));
-            if(i === 4){
+            if (i === 2) {
                 embedMessage.delete();
-                voteMap(message, server)
+                voteMap(message, server);
                 return;
-            }else{
+            } else {
                 map = maps[i];
             }
-
-            /*if (vote1 > minvote) {
-                map = maps[0]
-            }
-            if (vote2 > minvote) {
-                map = maps[1]
-            }
-            if (vote3 > minvote) {
-                map = maps[2]
-            }
-            if (vote4 > minvote) {
-                map = maps[3]
-            }
-            if (vote5 > minvote) {
-                embedMessage.delete();
-                voteMap(message, server)
-                return;
-            }
-
-            if (map === "") map = maps[Math.floor(Math.random() * maps.length)];
-            */
 
             embedMessage.delete();
             showMatch(message, server, map);
 
         });
 
-    })
+    });
 }
+
 
 function shuffleFunction(queue){
     const shuffledArray = queue.sort((a, b) => 0.5 - Math.random());
